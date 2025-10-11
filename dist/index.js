@@ -50092,24 +50092,24 @@ class LinkedVersions extends plugin_1.ManifestPlugin {
         if (versions.length === 0) {
             return strategiesByPath;
         }
-        const primaryVersion = versions.reduce((collector, version) => collector.compare(version) > 0 ? collector : version, versions[0]);
+        this.primaryVersion = versions.reduce((collector, version) => collector.compare(version) > 0 ? collector : version, versions[0]);
         const newStrategies = {};
         for (const path in strategiesByPath) {
             if (path in groupStrategies) {
                 const component = await strategiesByPath[path].getComponent();
-                this.logger.info(`Replacing strategy for path ${path} with forced version: ${primaryVersion}`);
+                this.logger.info(`Replacing strategy for path ${path} with forced version: ${this.primaryVersion}`);
                 newStrategies[path] = await (0, factory_1.buildStrategy)({
                     ...this.repositoryConfig[path],
                     github: this.github,
                     path,
                     targetBranch: this.targetBranch,
-                    releaseAs: primaryVersion.toString(),
+                    releaseAs: this.primaryVersion.toString(),
                 });
                 if (missingReleasePaths.has(path)) {
                     this.logger.debug(`Appending fake commit for path: ${path}`);
                     commitsByPath[path].push({
                         sha: '',
-                        message: `chore(${component}): Synchronize ${this.groupName} versions\n\nRelease-As: ${primaryVersion.toString()}`,
+                        message: `chore(${component}): Synchronize ${this.groupName} versions\n\nRelease-As: ${this.primaryVersion.toString()}`,
                     });
                 }
             }
@@ -50145,8 +50145,9 @@ class LinkedVersions extends plugin_1.ManifestPlugin {
         this.logger.info(`found ${inScopeCandidates.length} linked-versions candidates`);
         // delegate to the merge plugin and add merged pull request
         if (inScopeCandidates.length > 0) {
+            const version = this.primaryVersion ? ` ${this.primaryVersion}` : '';
             const merge = new merge_1.Merge(this.github, this.targetBranch, this.repositoryConfig, {
-                pullRequestTitlePattern: `chore\${scope}: release ${this.groupName} libraries`,
+                pullRequestTitlePattern: `chore\${scope}: release ${this.groupName}${version} libraries`,
                 forceMerge: true,
                 headBranchName: branch_name_1.BranchName.ofGroupTargetBranch(this.groupName, this.targetBranch).toString(),
             });
